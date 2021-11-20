@@ -10,6 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
+# todo: make config more dynamic - cfg file, cli args
 # GIT = '/usr/bin/git'
 # GH = '/usr/bin/gh'
 GIT = r'C:\Program Files\Git\cmd\git.exe'
@@ -50,16 +51,24 @@ def get_all_projects() -> dict[str, str]:
     return projects
 
 
-def run_git_command(directory: Path, command: str):
+def run_git_command(directory: Path, command: str) -> subprocess.CompletedProcess:
     command_list = command.split()
-    return subprocess.run([GIT, '-C', str(directory), *command_list])
+    completed_process = subprocess.run([GIT, '-C', str(directory), *command_list], stdout=subprocess.PIPE)
+    print(completed_process.stdout.decode())
+    return completed_process
 
 
 # https://cli.github.com/manual/
 def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
-    gh_process = subprocess.run([GH, 'repo', 'list', owner, '--json', 'name'], stdout=subprocess.PIPE)
+    print('Fetching existing mirror repos.')
+    gh_process = subprocess.run(
+        [GH, 'repo', 'list', owner, '--json', 'name', '--limit', str(SAVANNAH_SEARCH_ROWS)],
+        stdout=subprocess.PIPE
+    )
     gh_result_json = json.loads(gh_process.stdout)
     repos = [r['name'] for r in gh_result_json]
+
+    print(f'Fetched {len(repos)} existing mirror repos.')
     return repos
 
 
@@ -127,10 +136,14 @@ def sync_all_projects(workdir: Path):
     if USE_PROCESS_POOL:
         # todo: clean up subprocess output when this is enabled
         with concurrent.futures.ThreadPoolExecutor(max_workers=PROCESS_POOL_MAX_WORKERS) as executor:
-            executor.map(
-                lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
-                projects
-            )
+            try:
+                executor.map(
+                    lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
+                    projects
+                )
+            except KeyboardInterrupt:
+                print('Shutting down thread pool...')
+                executor.shutdown(cancel_futures=True)
     else:
         for project_name, project_desc in projects.items():
             sync_project(project_name, project_desc, workdir, mirror_exists=(project_name in existing_repos))
