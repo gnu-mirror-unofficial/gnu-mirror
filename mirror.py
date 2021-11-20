@@ -18,6 +18,10 @@ SAVANNAH_GIT_FORMAT = 'https://git.savannah.gnu.org/git/{}.git'
 MIRROR_GITHUB_ORG = 'git-mirror-unofficial'
 MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
 REPO_LIST_REGEX = re.compile(fr'{MIRROR_GITHUB_ORG}/(.*)\s')
+MIRROR_DESCRIPTION_FORMAT = f"""\
+{SAVANNAH_PROJECT_FORMAT}
+Please read {MIRROR_GIT_FORMAT.format('gnu-mirror#readme')}
+"""
 
 
 def get_all_projects() -> list[str]:
@@ -37,9 +41,10 @@ def run_git_command(directory: Path, command: str):
     subprocess.run([GIT, '-C', str(directory), *command_list])
 
 
+# https://cli.github.com/manual/
 def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
     gh_process = subprocess.run([GH, 'repo', 'list', owner], stdout=subprocess.PIPE)
-    gh_result = gh_process.stdout
+    gh_result = gh_process.stdout.decode()
     matches = re.findall(REPO_LIST_REGEX, gh_result)
     repos = [m[1] for m in matches]
     return repos
@@ -49,12 +54,21 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False):
     work_tree = workdir / project
     origin_remote = SAVANNAH_GIT_FORMAT.format(project)
     mirror_remote = MIRROR_GIT_FORMAT.format(project)
+    project_link = SAVANNAH_PROJECT_FORMAT.format(project)
 
     if not work_tree.is_dir():
         run_git_command(workdir, f'clone {origin_remote}')
-    # https://cli.github.com/manual/gh_repo_create
     if not mirror_exists:
-        subprocess.
+        repo_description = MIRROR_DESCRIPTION_FORMAT.format(project)
+        subprocess.run(
+            [
+                GH, 'repo', 'create',
+                f'{MIRROR_GITHUB_ORG}/{project}',
+                '--homepage', project_link,
+                '--description', repo_description,
+                '--public', '-y',
+            ]
+        )
 
     run_git_command(work_tree, 'pull')
     run_git_command(work_tree, f'push {mirror_remote}')
