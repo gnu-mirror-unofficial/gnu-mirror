@@ -85,6 +85,7 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
     return repos
 
 
+# memoization hack
 # noinspection PyDefaultArgument
 def sync_project(
         project: str, project_desc: str,
@@ -111,7 +112,7 @@ def sync_project(
                 return
             print(f'Project {project} not hosted on git, cloning with cvsimport.')
             cvs_success = run_git_command(
-                workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project}'
+                workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project} -C {project}'
             )
             if cvs_success.returncode == 1:
                 print('git-cvs not installed, skipping.')
