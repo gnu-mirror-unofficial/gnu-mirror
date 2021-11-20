@@ -8,6 +8,6 @@ These mirrors are purely for browsing, for people who want a quick search result
 
 Please do not interact with these repositories by cloning them, creating issues, forking them, opening pull requests, or otherwise. Instead, use the official source page for each project at https://savannah.gnu.org/project. A link to each project is provided in the description of its respective mirror repo.
 
-The mirror repos are updated daily.
+The mirror repos are updated daily (Specifically, a cron.daily job, in time zone Europe/London).
 
-This mirror project is wholly unofficial and unauthorised. No guarantees are given of security or being up-to-date. Projects are reproduced in accordance with the terms of their Free Software licenses, which can usually be found in their COPYING file.
+This mirror project is wholly unofficial and unauthorised. No guarantee is given of mirrors being secure or up-to-date. Projects are reproduced in accordance with the terms of their Free Software licenses, which can usually be found in their COPYING file.

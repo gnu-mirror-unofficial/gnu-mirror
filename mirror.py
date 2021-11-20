@@ -26,6 +26,7 @@ Please read {MIRROR_GIT_FORMAT.format('gnu-mirror#readme')}
 
 
 def get_all_projects() -> list[str]:
+    print('Fetching project list.')
     search_url = SAVANNAH_SEARCH_FORMAT.format(rows=SAVANNAH_SEARCH_ROWS)
     response = requests.get(search_url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -35,6 +36,7 @@ def get_all_projects() -> list[str]:
 
     project_links = [row.find('a')['href'] for row in table_rows]
     project_names = [re.match(GNU_PROJECT_REGEX, link)[1] for link in project_links]
+    print(f'Fetched {len(project_names)} projects.')
 
     return project_names
 
@@ -54,6 +56,9 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
 
 
 def sync_project(project: str, workdir: Path, mirror_exists: bool = False):
+    # todo: remove once done testing
+    input(f'Press enter to sync {project}:\n')
+
     work_tree = workdir / project
     origin_remote = SAVANNAH_GIT_FORMAT.format(project)
     mirror_remote = MIRROR_GIT_FORMAT.format(project)
@@ -83,7 +88,9 @@ def sync_all_projects(projects: list[str], workdir: Path):
 
 
 def main():
-    sync_all_projects(get_all_projects(), Path().resolve())
+    workdir = Path().resolve().parent
+    input(f'Running in {workdir}. Press enter:\n')
+    sync_all_projects(get_all_projects(), workdir)
 
 
 if __name__ == '__main__':
