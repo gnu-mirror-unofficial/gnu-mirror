@@ -18,6 +18,7 @@ SAVANNAH_GIT_FORMAT = 'https://git.savannah.gnu.org/git/{}.git'
 MIRROR_GITHUB_ORG = 'git-mirror-unofficial'
 MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
 REPO_LIST_REGEX = re.compile(fr'{MIRROR_GITHUB_ORG}/(.*)\s')
+GNU_PROJECT_REGEX = re.compile(r'\.\./projects/(.*)')
 MIRROR_DESCRIPTION_FORMAT = f"""\
 {SAVANNAH_PROJECT_FORMAT}
 Please read {MIRROR_GIT_FORMAT.format('gnu-mirror#readme')}
@@ -32,7 +33,9 @@ def get_all_projects() -> list[str]:
     search_table = soup.find('table', class_='box')
     table_rows = search_table.find_all('tr', class_='boxitem') + search_table.find_all('tr', class_='boxitemalt')
 
-    project_names = [row.find('a').string for row in table_rows]
+    project_links = [row.find('a')['href'] for row in table_rows]
+    project_names = [re.match(GNU_PROJECT_REGEX, link)[1] for link in project_links]
+
     return project_names
 
 
