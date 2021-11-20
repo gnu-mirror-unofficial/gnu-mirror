@@ -33,6 +33,9 @@ PROCESS_POOL_MAX_WORKERS = 10
 USE_PROCESS_POOL = True
 
 
+# todo: fix errors pushing refs making some mirror repos empty
+
+
 def get_all_projects() -> dict[str, str]:
     print('Fetching project list.')
     search_url = SAVANNAH_SEARCH_FORMAT.format(rows=SAVANNAH_SEARCH_ROWS)
