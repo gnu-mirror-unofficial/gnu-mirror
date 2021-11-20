@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import concurrent.futures
+import sys
 from pathlib import Path
 
 import requests
@@ -11,10 +12,16 @@ from bs4 import BeautifulSoup
 
 
 # todo: make config more dynamic - cfg file, cli args
-# GIT = '/usr/bin/git'
-# GH = '/usr/bin/gh'
-GIT = r'C:\Program Files\Git\cmd\git.exe'
-GH = r'C:\Program Files (x86)\GitHub CLI\gh.exe'
+GIT_POSIX = '/usr/bin/git'
+GH_POSIX = '/usr/bin/gh'
+GIT_WIN = r'C:\Program Files\Git\cmd\git.exe'
+GH_WIN = r'C:\Program Files (x86)\GitHub CLI\gh.exe'
+if sys.platform == 'win32':
+    GIT = GIT_WIN
+    GH = GH_WIN
+else:
+    GIT = GIT_POSIX
+    GH = GH_POSIX
 SAVANNAH_SEARCH_FORMAT = 'https://savannah.gnu.org/search/?type_of_search=soft&words=*&type=1&max_rows={rows}'
 SAVANNAH_SEARCH_ROWS = 1000
 SAVANNAH_PROJECT_FORMAT = 'https://savannah.gnu.org/projects/{}'
