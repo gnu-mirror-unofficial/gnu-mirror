@@ -1,10 +1,11 @@
 #!/usr/bin/env python3.9
 
 import json
+import os
 import re
 import subprocess
-import concurrent.futures
 import sys
+import concurrent.futures
 from pathlib import Path
 
 import requests
@@ -36,8 +37,8 @@ MIRROR_DESCRIPTION_FORMAT = (
     'Official repo link below. '
     "Please read this organisation's pinned readme for info."
 )
-PROCESS_POOL_MAX_WORKERS = 10
-USE_PROCESS_POOL = True
+THREADPOOL_MAX_WORKERS = 10
+USE_THREADPOOL = os.environ.get('USE_THREADPOOL', 'true') == 'true'
 
 
 # todo: fix errors pushing refs making some mirror repos empty
@@ -145,8 +146,8 @@ def sync_all_projects(workdir: Path):
     projects = get_all_projects()
     existing_repos = get_existing_repos()
 
-    if USE_PROCESS_POOL:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=PROCESS_POOL_MAX_WORKERS) as executor:
+    if USE_THREADPOOL:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=THREADPOOL_MAX_WORKERS) as executor:
             try:
                 executor.map(
                     lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
