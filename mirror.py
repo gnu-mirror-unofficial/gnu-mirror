@@ -24,7 +24,7 @@ MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
 GNU_PROJECT_REGEX = re.compile(r'\.\./projects/(.*)')
 # not even newlines are allowed in github repo descs lol
 MIRROR_DESCRIPTION_FORMAT = (
-    '{original_desc} '
+    '{original_desc} - '
     'Official repo link below. '
     "Please read this organisation's pinned readme for info."
 )
@@ -68,8 +68,8 @@ def sync_project(
         cvs_installed: list[bool] = [True]
 ):
     print(f'Mirroring project {project}.')
-    # todo: remove once done testing
-    input(f'Press enter to sync {project}:\n')
+    # for testing
+    # input(f'Press enter to sync {project}:\n')
 
     work_tree = workdir / project
     origin_remote = SAVANNAH_GIT_FORMAT.format(project)
@@ -98,6 +98,8 @@ def sync_project(
     # create mirror github repo if it doesn't exist
     if not mirror_exists:
         print('Mirror repo does not exist, creating.')
+        # todo: figure out why this prints 'error: remote origin already exists.'
+        # todo: disable issues, prs, releases, packages
         repo_description = MIRROR_DESCRIPTION_FORMAT.format(original_desc=project_desc)
         subprocess.run(
             [
@@ -127,7 +129,8 @@ def sync_all_projects(workdir: Path):
 
 def main():
     workdir = Path().resolve().parent
-    input(f'Running in {workdir}. Press enter:\n')
+    print(f'Running in {workdir}.')
+    # input('Press enter:\n')
     sync_all_projects(workdir)
 
 
