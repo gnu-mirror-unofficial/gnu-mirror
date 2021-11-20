@@ -53,7 +53,9 @@ def get_all_projects() -> dict[str, str]:
 
 def run_git_command(directory: Path, command: str) -> subprocess.CompletedProcess:
     command_list = command.split()
-    completed_process = subprocess.run([GIT, '-C', str(directory), *command_list], stdout=subprocess.PIPE)
+    completed_process = subprocess.run(
+        [GIT, '-C', str(directory), *command_list], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
     print(completed_process.stdout.decode())
     return completed_process
 
@@ -134,7 +136,6 @@ def sync_all_projects(workdir: Path):
     existing_repos = get_existing_repos()
 
     if USE_PROCESS_POOL:
-        # todo: clean up subprocess output when this is enabled
         with concurrent.futures.ThreadPoolExecutor(max_workers=PROCESS_POOL_MAX_WORKERS) as executor:
             try:
                 executor.map(
