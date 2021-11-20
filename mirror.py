@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.9
 
+import json
 import re
 import subprocess
 import concurrent.futures
@@ -9,15 +10,16 @@ import requests
 from bs4 import BeautifulSoup
 
 
-GIT = '/usr/bin/git'
-GH = '/usr/bin/gh'
+# GIT = '/usr/bin/git'
+# GH = '/usr/bin/gh'
+GIT = r'C:\Program Files\Git\cmd\git.exe'
+GH = r'C:\Program Files (x86)\GitHub CLI\gh.exe'
 SAVANNAH_SEARCH_FORMAT = 'https://savannah.gnu.org/search/?type_of_search=soft&words=*&type=1&max_rows={rows}'
 SAVANNAH_SEARCH_ROWS = 1000
 SAVANNAH_PROJECT_FORMAT = 'https://savannah.gnu.org/projects/{}'
 SAVANNAH_GIT_FORMAT = 'https://git.savannah.gnu.org/git/{}.git'
 MIRROR_GITHUB_ORG = 'git-mirror-unofficial'
 MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
-REPO_LIST_REGEX = re.compile(fr'{MIRROR_GITHUB_ORG}/(.*)\s')
 GNU_PROJECT_REGEX = re.compile(r'\.\./projects/(.*)')
 MIRROR_DESCRIPTION_FORMAT = f"""\
 {SAVANNAH_PROJECT_FORMAT}
@@ -48,10 +50,9 @@ def run_git_command(directory: Path, command: str):
 
 # https://cli.github.com/manual/
 def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
-    gh_process = subprocess.run([GH, 'repo', 'list', owner], stdout=subprocess.PIPE)
-    gh_result = gh_process.stdout.decode()
-    matches = re.findall(REPO_LIST_REGEX, gh_result)
-    repos = [m[1] for m in matches]
+    gh_process = subprocess.run([GH, 'repo', 'list', owner, '--json', 'name'], stdout=subprocess.PIPE)
+    gh_result_json = json.loads(gh_process.stdout)
+    repos = [r['name'] for r in gh_result_json]
     return repos
 
 
@@ -83,8 +84,10 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False):
 
 
 def sync_all_projects(projects: list[str], workdir: Path):
+    existing_repos = get_existing_repos()
+
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        executor.map(lambda p: sync_project(p, workdir), projects)
+        executor.map(lambda p: sync_project(p, workdir, mirror_exists=(p in existing_repos)), projects)
 
 
 def main():
