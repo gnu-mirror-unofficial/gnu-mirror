@@ -3,7 +3,7 @@
 import json
 import re
 import subprocess
-# import concurrent.futures
+import concurrent.futures
 from pathlib import Path
 
 import requests
@@ -28,6 +28,8 @@ MIRROR_DESCRIPTION_FORMAT = (
     'Official repo link below. '
     "Please read this organisation's pinned readme for info."
 )
+PROCESS_POOL_MAX_WORKERS = 10
+USE_PROCESS_POOL = True
 
 
 def get_all_projects() -> dict[str, str]:
@@ -80,6 +82,7 @@ def sync_project(
     if not work_tree.is_dir():
         print('Local copy does not exist, cloning.')
         clone_success = run_git_command(workdir, f'clone {origin_remote}')
+        # todo: handle some cvs-only repos having empty git servers instead of nonexistent ones
         if clone_success.returncode == 128:
             if not cvs_installed[0]:
                 print('git-cvs not installed, skipping.')
@@ -121,10 +124,15 @@ def sync_all_projects(workdir: Path):
     projects = get_all_projects()
     existing_repos = get_existing_repos()
 
-    # with concurrent.futures.ProcessPoolExecutor() as executor:
-    #     executor.map(lambda p: sync_project(p, workdir, mirror_exists=(p in existing_repos)), projects)
-    for project_name, project_desc in projects.items():
-        sync_project(project_name, project_desc, workdir, mirror_exists=(project_name in existing_repos))
+    if USE_PROCESS_POOL:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=PROCESS_POOL_MAX_WORKERS) as executor:
+            executor.map(
+                lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
+                projects
+            )
+    else:
+        for project_name, project_desc in projects.items():
+            sync_project(project_name, project_desc, workdir, mirror_exists=(project_name in existing_repos))
 
 
 def main():
