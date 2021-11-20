@@ -23,13 +23,14 @@ MIRROR_GITHUB_ORG = 'gnu-mirror-unofficial'
 MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
 GNU_PROJECT_REGEX = re.compile(r'\.\./projects/(.*)')
 # not even newlines are allowed in github repo descs lol
-MIRROR_DESCRIPTION_FORMAT = """\
-Official repo link below. \
-Please read this organisation's pinned readme for info.\
-"""
+MIRROR_DESCRIPTION_FORMAT = (
+    '{original_desc} '
+    'Official repo link below. '
+    "Please read this organisation's pinned readme for info."
+)
 
 
-def get_all_projects() -> list[str]:
+def get_all_projects() -> dict[str, str]:
     print('Fetching project list.')
     search_url = SAVANNAH_SEARCH_FORMAT.format(rows=SAVANNAH_SEARCH_ROWS)
     response = requests.get(search_url)
@@ -38,11 +39,13 @@ def get_all_projects() -> list[str]:
     search_table = soup.find('table', class_='box')
     table_rows = search_table.find_all('tr', class_='boxitem') + search_table.find_all('tr', class_='boxitemalt')
 
-    project_links = [row.find('a')['href'] for row in table_rows]
-    project_names = [re.match(GNU_PROJECT_REGEX, link)[1] for link in project_links]
-    print(f'Fetched {len(project_names)} projects.')
+    project_links = [row.find('a') for row in table_rows]
+    projects = {
+            re.match(GNU_PROJECT_REGEX, link['href'])[1]: link.string for link in project_links
+    }
+    print(f'Fetched {len(projects)} projects.')
 
-    return project_names
+    return projects
 
 
 def run_git_command(directory: Path, command: str):
@@ -59,7 +62,11 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
 
 
 # noinspection PyDefaultArgument
-def sync_project(project: str, workdir: Path, mirror_exists: bool = False, cvs_installed: list[bool] = [True]):
+def sync_project(
+        project: str, project_desc: str,
+        workdir: Path, mirror_exists: bool = False,
+        cvs_installed: list[bool] = [True]
+):
     print(f'Mirroring project {project}.')
     # todo: remove once done testing
     input(f'Press enter to sync {project}:\n')
@@ -69,6 +76,7 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False, cvs_i
     mirror_remote = MIRROR_GIT_FORMAT.format(project)
     project_link = SAVANNAH_PROJECT_FORMAT.format(project)
 
+    # clone repo if it doesn't exist
     if not work_tree.is_dir():
         print('Local copy does not exist, cloning.')
         clone_success = run_git_command(workdir, f'clone {origin_remote}')
@@ -77,7 +85,9 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False, cvs_i
                 print('git-cvs not installed, skipping.')
                 return
             print(f'Project {project} not hosted on git, cloning with cvsimport.')
-            cvs_success = run_git_command(workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project}')
+            cvs_success = run_git_command(
+                workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project}'
+            )
             if cvs_success.returncode == 1:
                 print('git-cvs not installed, skipping.')
                 cvs_installed[0] = False
@@ -85,9 +95,10 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False, cvs_i
     else:
         print('Local copy already exists.')
 
+    # create mirror github repo if it doesn't exist
     if not mirror_exists:
         print('Mirror repo does not exist, creating.')
-        repo_description = MIRROR_DESCRIPTION_FORMAT
+        repo_description = MIRROR_DESCRIPTION_FORMAT.format(original_desc=project_desc)
         subprocess.run(
             [
                 GH, 'repo', 'create',
@@ -104,19 +115,20 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False, cvs_i
     run_git_command(work_tree, f'push {mirror_remote}')
 
 
-def sync_all_projects(projects: list[str], workdir: Path):
+def sync_all_projects(workdir: Path):
+    projects = get_all_projects()
     existing_repos = get_existing_repos()
 
     # with concurrent.futures.ProcessPoolExecutor() as executor:
     #     executor.map(lambda p: sync_project(p, workdir, mirror_exists=(p in existing_repos)), projects)
-    for p in projects:
-        sync_project(p, workdir, mirror_exists=(p in existing_repos))
+    for project_name, project_desc in projects.items():
+        sync_project(project_name, project_desc, workdir, mirror_exists=(project_name in existing_repos))
 
 
 def main():
     workdir = Path().resolve().parent
     input(f'Running in {workdir}. Press enter:\n')
-    sync_all_projects(get_all_projects(), workdir)
+    sync_all_projects(workdir)
 
 
 if __name__ == '__main__':
