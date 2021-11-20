@@ -125,7 +125,8 @@ def sync_all_projects(workdir: Path):
     existing_repos = get_existing_repos()
 
     if USE_PROCESS_POOL:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=PROCESS_POOL_MAX_WORKERS) as executor:
+        # todo: clean up subprocess output when this is enabled
+        with concurrent.futures.ThreadPoolExecutor(max_workers=PROCESS_POOL_MAX_WORKERS) as executor:
             executor.map(
                 lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
                 projects
