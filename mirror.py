@@ -3,9 +3,8 @@
 import json
 import re
 import subprocess
-import concurrent.futures
+# import concurrent.futures
 from pathlib import Path
-from typing import Union
 
 import requests
 from bs4 import BeautifulSoup
@@ -19,6 +18,7 @@ SAVANNAH_SEARCH_FORMAT = 'https://savannah.gnu.org/search/?type_of_search=soft&w
 SAVANNAH_SEARCH_ROWS = 1000
 SAVANNAH_PROJECT_FORMAT = 'https://savannah.gnu.org/projects/{}'
 SAVANNAH_GIT_FORMAT = 'https://git.savannah.gnu.org/git/{}.git'
+SAVANNAH_CVS_FORMAT = ':pserver:anonymous@cvs.savannah.gnu.org:/web/{}'
 MIRROR_GITHUB_ORG = 'gnu-mirror-unofficial'
 MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
 GNU_PROJECT_REGEX = re.compile(r'\.\./projects/(.*)')
@@ -45,11 +45,9 @@ def get_all_projects() -> list[str]:
     return project_names
 
 
-def run_git_command(directory: Path, command: Union[str, list]):
-    if isinstance(command, str):
-        command = command.split()
-    print(command)
-    subprocess.run([GIT, '-C', str(directory), *command])
+def run_git_command(directory: Path, command: str):
+    command_list = command.split()
+    return subprocess.run([GIT, '-C', str(directory), *command_list])
 
 
 # https://cli.github.com/manual/
@@ -60,7 +58,8 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
     return repos
 
 
-def sync_project(project: str, workdir: Path, mirror_exists: bool = False):
+# noinspection PyDefaultArgument
+def sync_project(project: str, workdir: Path, mirror_exists: bool = False, cvs_installed: list[bool] = [True]):
     print(f'Mirroring project {project}.')
     # todo: remove once done testing
     input(f'Press enter to sync {project}:\n')
@@ -72,9 +71,20 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False):
 
     if not work_tree.is_dir():
         print('Local copy does not exist, cloning.')
-        run_git_command(workdir, f'clone {origin_remote}')
+        clone_success = run_git_command(workdir, f'clone {origin_remote}')
+        if clone_success.returncode == 128:
+            if not cvs_installed[0]:
+                print('git-cvs not installed, skipping.')
+                return
+            print(f'Project {project} not hosted on git, cloning with cvsimport.')
+            cvs_success = run_git_command(workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project}')
+            if cvs_success.returncode == 1:
+                print('git-cvs not installed, skipping.')
+                cvs_installed[0] = False
+                return
     else:
         print('Local copy already exists.')
+
     if not mirror_exists:
         print('Mirror repo does not exist, creating.')
         repo_description = MIRROR_DESCRIPTION_FORMAT
@@ -91,7 +101,7 @@ def sync_project(project: str, workdir: Path, mirror_exists: bool = False):
         print('Mirror repo already exists.')
 
     run_git_command(work_tree, 'pull')
-    run_git_command(work_tree, ['push', mirror_remote])
+    run_git_command(work_tree, f'push {mirror_remote}')
 
 
 def sync_all_projects(projects: list[str], workdir: Path):
