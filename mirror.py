@@ -93,7 +93,6 @@ def update_repo(project: str, owner: str = MIRROR_GITHUB_ORG):
             '-F', 'has_issues=false',
             '-F', 'has_projects=false',
             '-F', 'has_wiki=false',
-            '-F', 'allow_forking=false',
         ]
     )
 
@@ -167,6 +166,8 @@ def sync_project(
         print('Mirror repo does not exist, creating.')
         create_repo(project, project_desc, project_link)
         # todo: change back
+        # you might say I should just change these settings on repo creation.
+        # but the repo create endpoint doesn't have the allow_forking field so whatever
         # update_repo(project)
     else:
         print('Mirror repo already exists.')
