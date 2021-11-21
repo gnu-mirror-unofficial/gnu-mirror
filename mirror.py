@@ -98,12 +98,49 @@ def update_repo(project: str, owner: str = MIRROR_GITHUB_ORG):
     )
 
 
+def create_repo(
+        project: str, project_desc: str, project_link: str,
+        owner: str = MIRROR_GITHUB_ORG
+):
+    # todo: figure out why this prints 'error: remote origin already exists.'
+    repo_description = MIRROR_DESCRIPTION_FORMAT.format(original_desc=project_desc)
+    subprocess.run(
+        [
+            GH, 'repo', 'create',
+            f'{owner}/{project}',
+            '--homepage', project_link,
+            '--description', repo_description,
+            '--public', '-y',
+        ]
+    )
+    update_repo(project)
+
+
 # memoization hack
 # noinspection PyDefaultArgument
+def clone_origin(
+        project: str, origin_remote: str, workdir: Path,
+        cvs_installed: list[bool] = [True]
+):
+    clone_success = run_git_command(workdir, f'clone {origin_remote}')
+    # todo: handle some cvs-only repos having empty git servers instead of nonexistent ones
+    if clone_success.returncode == 128:
+        if not cvs_installed[0]:
+            print('git-cvs not installed, skipping.')
+            return
+        print(f'Project {project} not hosted on git, cloning with cvsimport.')
+        cvs_success = run_git_command(
+            workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project} -C {project}'
+        )
+        if cvs_success.returncode == 1:
+            print('git-cvs not installed, skipping.')
+            cvs_installed[0] = False
+            return
+
+
 def sync_project(
         project: str, project_desc: str,
-        workdir: Path, mirror_exists: bool = False,
-        cvs_installed: list[bool] = [True]
+        workdir: Path, mirror_exists: bool = False
 ):
     print(f'Mirroring project {project}.')
     # for testing
@@ -118,38 +155,14 @@ def sync_project(
     # clone repo if it doesn't exist
     if not work_tree.is_dir():
         print('Local copy does not exist, cloning.')
-        clone_success = run_git_command(workdir, f'clone {origin_remote}')
-        # todo: handle some cvs-only repos having empty git servers instead of nonexistent ones
-        if clone_success.returncode == 128:
-            if not cvs_installed[0]:
-                print('git-cvs not installed, skipping.')
-                return
-            print(f'Project {project} not hosted on git, cloning with cvsimport.')
-            cvs_success = run_git_command(
-                workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project} -C {project}'
-            )
-            if cvs_success.returncode == 1:
-                print('git-cvs not installed, skipping.')
-                cvs_installed[0] = False
-                return
+        clone_origin(project, origin_remote, workdir)
     else:
         print('Local copy already exists.')
 
     # create mirror github repo if it doesn't exist
     if not mirror_exists:
         print('Mirror repo does not exist, creating.')
-        # todo: figure out why this prints 'error: remote origin already exists.'
-        repo_description = MIRROR_DESCRIPTION_FORMAT.format(original_desc=project_desc)
-        subprocess.run(
-            [
-                GH, 'repo', 'create',
-                f'{MIRROR_GITHUB_ORG}/{project}',
-                '--homepage', project_link,
-                '--description', repo_description,
-                '--public', '-y',
-            ]
-        )
-        update_repo(project)
+        create_repo(project, project_desc, project_link)
     else:
         print('Mirror repo already exists.')
         run_git_command(work_tree, 'pull')
