@@ -101,6 +101,7 @@ def sync_project(
     origin_remote = SAVANNAH_GIT_FORMAT.format(project)
     mirror_remote = MIRROR_GIT_FORMAT.format(project)
     project_link = SAVANNAH_PROJECT_FORMAT.format(project)
+    print('\n'.join([project_link, origin_remote, mirror_remote]))
 
     # clone repo if it doesn't exist
     if not work_tree.is_dir():
