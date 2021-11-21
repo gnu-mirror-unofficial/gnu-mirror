@@ -179,21 +179,28 @@ def sync_project(
 
     run_git_command(work_tree, f'push {mirror_remote} --all')
 
+    return project
+
 
 def sync_all_projects(workdir: Path):
     projects = get_all_projects()
     existing_repos = get_existing_repos()
 
     if USE_THREADPOOL:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=THREADPOOL_MAX_WORKERS) as executor:
-            try:
-                executor.map(
-                    lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
-                    projects
-                )
-            except KeyboardInterrupt:
-                print('Shutting down thread pool...')
-                executor.shutdown(cancel_futures=True)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=THREADPOOL_MAX_WORKERS)
+        results = executor.map(
+            lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
+            projects
+        )
+        try:
+            for done_project in results:
+                print(f'{done_project}: Done.')
+        except KeyboardInterrupt:
+            print('\nReceived KeyBoardInterRupt.\n')
+        finally:
+            print('Shutting down thread pool...')
+            executor.shutdown(cancel_futures=True)
+            print('Shut down thread pool.')
     else:
         for project_name, project_desc in projects.items():
             sync_project(project_name, project_desc, workdir, mirror_exists=(project_name in existing_repos))
