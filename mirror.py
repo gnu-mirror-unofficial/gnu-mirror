@@ -182,6 +182,8 @@ def sync_all_projects(workdir: Path, threadpool_workers: int):
     existing_repos = get_existing_repos()
 
     if threadpool_workers:
+        if threadpool_workers == -1:
+            threadpool_workers = None
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=threadpool_workers)
         results = executor.map(
             lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
@@ -211,7 +213,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         '-w', '--threadpool-workers', type=int, default=THREADPOOL_WORKERS_DEFAULT,
-        help='number of thread pool workers to use, 0 for a loop instead of a thread pool'
+        help='number of thread pool workers to use, -1 for system default, 0 for a loop instead of a thread pool'
     )
     return parser
 
