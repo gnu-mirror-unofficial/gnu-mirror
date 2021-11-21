@@ -31,6 +31,7 @@ SAVANNAH_CVS_FORMAT = ':pserver:anonymous@cvs.savannah.gnu.org:/web/{}'
 MIRROR_GITHUB_ORG = 'gnu-mirror-unofficial'
 MIRROR_GIT_FORMAT = f'https://github.com/{MIRROR_GITHUB_ORG}/{{}}'
 GNU_PROJECT_REGEX = re.compile(r'\.\./projects/(.*)')
+HEAD_REGEX = re.compile(r'ref: refs/heads/(.*)\n')
 # not even newlines are allowed in github repo descs lol
 MIRROR_DESCRIPTION_FORMAT = (
     '{original_desc} - '
@@ -83,6 +84,12 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
 
     print(f'Fetched {len(repos)} existing mirror repos.')
     return repos
+
+
+def get_current_branch(work_tree: Path) -> str:
+    head_path = work_tree / '.git/HEAD'
+    head = head_path.read_text(encoding='utf-8')
+    return re.match(HEAD_REGEX, head)[1]
 
 
 # memoization hack
@@ -138,8 +145,8 @@ def sync_project(
         )
     else:
         print('Mirror repo already exists.')
+        run_git_command(work_tree, 'pull')
 
-    run_git_command(work_tree, 'pull')
     run_git_command(work_tree, f'push {mirror_remote}')
 
 
