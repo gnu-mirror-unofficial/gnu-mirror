@@ -113,7 +113,6 @@ def create_repo(
             '--public', '-y',
         ]
     )
-    update_repo(project)
 
 
 # memoization hack
@@ -121,13 +120,13 @@ def create_repo(
 def clone_origin(
         project: str, origin_remote: str, workdir: Path,
         cvs_installed: list[bool] = [True]
-):
+) -> bool:
     clone_success = run_git_command(workdir, f'clone {origin_remote}')
     # todo: handle some cvs-only repos having empty git servers instead of nonexistent ones
     if clone_success.returncode == 128:
         if not cvs_installed[0]:
             print('git-cvs not installed, skipping.')
-            return
+            return False
         print(f'Project {project} not hosted on git, cloning with cvsimport.')
         cvs_success = run_git_command(
             workdir, f'cvsimport -d {SAVANNAH_CVS_FORMAT.format(project)} {project} -C {project}'
@@ -135,7 +134,9 @@ def clone_origin(
         if cvs_success.returncode == 1:
             print('git-cvs not installed, skipping.')
             cvs_installed[0] = False
-            return
+            return False
+
+    return True
 
 
 def sync_project(
@@ -155,7 +156,9 @@ def sync_project(
     # clone repo if it doesn't exist
     if not work_tree.is_dir():
         print('Local copy does not exist, cloning.')
-        clone_origin(project, origin_remote, workdir)
+        clone_success = clone_origin(project, origin_remote, workdir)
+        if not clone_success:
+            return
     else:
         print('Local copy already exists.')
 
@@ -163,9 +166,13 @@ def sync_project(
     if not mirror_exists:
         print('Mirror repo does not exist, creating.')
         create_repo(project, project_desc, project_link)
+        # todo: change back
+        # update_repo(project)
     else:
         print('Mirror repo already exists.')
         run_git_command(work_tree, 'pull')
+    # todo: change back
+    update_repo(project)
 
     run_git_command(work_tree, f'push {mirror_remote} --all')
 
