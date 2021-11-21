@@ -42,9 +42,6 @@ THREADPOOL_MAX_WORKERS = 10
 USE_THREADPOOL = os.environ.get('USE_THREADPOOL', 'true') == 'true'
 
 
-# todo: fix errors pushing refs making some mirror repos empty
-
-
 def get_all_projects() -> dict[str, str]:
     print('Fetching project list.')
     search_url = SAVANNAH_SEARCH_FORMAT.format(rows=SAVANNAH_SEARCH_ROWS)
@@ -84,6 +81,21 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
 
     print(f'Fetched {len(repos)} existing mirror repos.')
     return repos
+
+
+def update_repo(project: str, owner: str = MIRROR_GITHUB_ORG):
+    subprocess.run(
+        [
+            GH,
+            'api',
+            f'repos/{owner}/{project}',
+            '-X', 'PATCH',
+            '-F', 'has_issues=false',
+            '-F', 'has_projects=false',
+            '-F', 'has_wiki=false',
+            '-F', 'allow_forking=false',
+        ]
+    )
 
 
 # memoization hack
@@ -127,7 +139,6 @@ def sync_project(
     if not mirror_exists:
         print('Mirror repo does not exist, creating.')
         # todo: figure out why this prints 'error: remote origin already exists.'
-        # todo: disable issues, prs, releases, packages
         repo_description = MIRROR_DESCRIPTION_FORMAT.format(original_desc=project_desc)
         subprocess.run(
             [
@@ -138,6 +149,7 @@ def sync_project(
                 '--public', '-y',
             ]
         )
+        update_repo(project)
     else:
         print('Mirror repo already exists.')
         run_git_command(work_tree, 'pull')
