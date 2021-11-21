@@ -165,15 +165,12 @@ def sync_project(
     if not mirror_exists:
         print(f'{project}: Mirror repo does not exist, creating.')
         create_repo(project, project_desc, project_link)
-        # todo: change back
         # you might say I should just change these settings on repo creation.
-        # but the repo create endpoint doesn't have the allow_forking field so whatever
-        # update_repo(project)
+        # but the repo create endpoint doesn't have some fields so whatever
+        update_repo(project)
     else:
         print(f'{project}: Mirror repo already exists.')
         run_git_command(work_tree, 'pull')
-    # todo: change back
-    update_repo(project)
 
     run_git_command(work_tree, f'push {mirror_remote} --all')
 
