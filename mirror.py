@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.9
 
+import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -12,7 +12,6 @@ import requests
 from bs4 import BeautifulSoup
 
 
-# todo: make config more dynamic - cfg file, cli args
 GIT_POSIX = '/usr/bin/git'
 GH_POSIX = '/usr/bin/gh'
 GIT_WIN = r'C:\Program Files\Git\cmd\git.exe'
@@ -38,8 +37,7 @@ MIRROR_DESCRIPTION_FORMAT = (
     'Official repo link below. '
     "Please read this organisation's pinned readme for info."
 )
-THREADPOOL_MAX_WORKERS = 10
-USE_THREADPOOL = os.environ.get('USE_THREADPOOL', 'true') == 'true'
+THREADPOOL_WORKERS_DEFAULT = 10
 
 
 def get_all_projects() -> dict[str, str]:
@@ -182,12 +180,12 @@ def sync_project(
     return project
 
 
-def sync_all_projects(workdir: Path):
+def sync_all_projects(workdir: Path, threadpool_workers: int):
     projects = get_all_projects()
     existing_repos = get_existing_repos()
 
-    if USE_THREADPOOL:
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=THREADPOOL_MAX_WORKERS)
+    if threadpool_workers:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=threadpool_workers)
         results = executor.map(
             lambda p: sync_project(p, projects[p], workdir, mirror_exists=(p in existing_repos)),
             projects
@@ -206,11 +204,29 @@ def sync_all_projects(workdir: Path):
             sync_project(project_name, project_desc, workdir, mirror_exists=(project_name in existing_repos))
 
 
+class Args(argparse.Namespace):
+    def __init__(self, **kwargs):
+        self.threadpool_workers = THREADPOOL_WORKERS_DEFAULT
+        super().__init__(**kwargs)
+
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        '-w', '--threadpool-workers', type=int, default=THREADPOOL_WORKERS_DEFAULT,
+        help='number of thread pool workers to use, 0 for a loop instead of a thread pool'
+    )
+    return parser
+
+
 def main():
+    parser = get_parser()
+    args = parser.parse_args(namespace=Args())
+
     workdir = Path().resolve().parent
     print(f'Running in {workdir}.')
     # input('Press enter:\n')
-    sync_all_projects(workdir)
+    sync_all_projects(workdir, args.threadpool_workers)
 
 
 if __name__ == '__main__':
