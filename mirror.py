@@ -84,11 +84,13 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
 
 
 def update_repo(project: str, owner: str = MIRROR_GITHUB_ORG):
+    print(f'Updating settings for {project}.')
     subprocess.run(
         [
             GH,
             'api',
             f'repos/{owner}/{project}',
+            '--silent',
             '-X', 'PATCH',
             '-F', 'has_issues=false',
             '-F', 'has_projects=false',
