@@ -86,12 +86,6 @@ def get_existing_repos(owner: str = MIRROR_GITHUB_ORG) -> list[str]:
     return repos
 
 
-def get_current_branch(work_tree: Path) -> str:
-    head_path = work_tree / '.git/HEAD'
-    head = head_path.read_text(encoding='utf-8')
-    return re.match(HEAD_REGEX, head)[1]
-
-
 # memoization hack
 # noinspection PyDefaultArgument
 def sync_project(
@@ -147,7 +141,7 @@ def sync_project(
         print('Mirror repo already exists.')
         run_git_command(work_tree, 'pull')
 
-    run_git_command(work_tree, f'push {mirror_remote}')
+    run_git_command(work_tree, f'push {mirror_remote} --all')
 
 
 def sync_all_projects(workdir: Path):
