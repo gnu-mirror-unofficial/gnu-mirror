@@ -3,8 +3,8 @@
 import argparse
 import json
 import re
+import shutil
 import subprocess
-import sys
 import concurrent.futures
 from pathlib import Path
 
@@ -12,16 +12,8 @@ import requests
 from bs4 import BeautifulSoup
 
 
-GIT_POSIX = '/usr/bin/git'
-GH_POSIX = '/usr/bin/gh'
-GIT_WIN = r'C:\Program Files\Git\cmd\git.exe'
-GH_WIN = r'C:\Program Files (x86)\GitHub CLI\gh.exe'
-if sys.platform == 'win32':
-    GIT = GIT_WIN
-    GH = GH_WIN
-else:
-    GIT = GIT_POSIX
-    GH = GH_POSIX
+GIT = shutil.which('git')
+GH = shutil.which('gh')
 SAVANNAH_SEARCH_FORMAT = 'https://savannah.gnu.org/search/?type_of_search=soft&words=*&type=1&max_rows={rows}'
 SAVANNAH_SEARCH_ROWS = 1000
 SAVANNAH_PROJECT_FORMAT = 'https://savannah.gnu.org/projects/{}'
