@@ -1,5 +1,9 @@
 # gnu-mirror
 
+## Icon
+
+Icon is [LAL-1.3](https://directory.fsf.org/wiki/License:LAL-1.3) by Vladimir B. Tsarkov 2010. https://www.gnu.org/graphics/BVBN.html
+
 ## Information on this mirror
 
 This GitHub organisation is an automated mirror of every GNU project hosted at https://savannah.gnu.org/. At the time of writing this is about 400 repos.
